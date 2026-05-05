@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Movalist — Inventory Calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<style>
+  :root {
+    --primary: #e03020;
+    --primary-light: #f03828;
+    --primary-dark: #b82418;
+    --accent: #fff0ee;
+    --success: #0f9d58;
+    --danger: #b91c1c;
+    --bg: #faf9f9;
+    --card: #ffffff;
+    --text: #1a1010;
+    --muted: #6b7280;
+    --border: #ecdcdb;
+    --shadow: 0 2px 16px rgba(224,48,32,0.07);
+    --shadow-lg: 0 8px 40px rgba(224,48,32,0.13);
+    --radius: 14px;
+    --radius-sm: 8px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding-bottom: 120px;
+  }
+
+  /* ── STICKY HEADER ── */
+  .sticky-bar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--primary);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    box-shadow: 0 2px 20px rgba(180,30,20,0.28);
+  }
+  .sticky-logo { display:flex; align-items:center; }
+  .volume-badge {
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.25);
+    border-radius: 50px;
+    padding: 7px 16px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background 0.3s;
+  }
+  .volume-badge .vol-num {
+    font-size: 1.1rem;
+    color: #ffd6d0;
+    font-weight: 700;
+    transition: all 0.3s;
+  }
+  .volume-badge.pulse .vol-num { transform: scale(1.2); color: #fff; }
+
+  /* ── MAIN CONTAINER ── */
+  .container {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 24px 16px;
+  }
+
+  /* ── HERO ── */
+  .hero {
+    text-align: center;
+    padding: 32px 0 24px;
+  }
+  .hero h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(1.8rem, 5vw, 2.6rem);
+    color: var(--primary);
+    line-height: 1.15;
+    margin-bottom: 10px;
+  }
+  .hero p {
+    color: var(--muted);
+    font-size: 1rem;
+    max-width: 440px;
+    margin: 0 auto;
+    line-height: 1.6;
+  }
+  .step-pill {
+    display: inline-block;
+    background: var(--accent);
+    color: var(--primary);
+    font-weight: 600;
+    font-size: 0.75rem;
+    padding: 4px 12px;
+    border-radius: 50px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--card);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 24px;
+    margin-bottom: 20px;
+    border: 1px solid var(--border);
+  }
+  .card-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.25rem;
+    color: var(--primary);
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .card-title svg { flex-shrink: 0; }
+
+  /* ── FORM FIELDS ── */
+  .field-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+  @media (max-width: 500px) { .field-grid { grid-template-columns: 1fr; } }
+  .field-full { grid-column: 1 / -1; }
+
+  .field label {
+    display: block;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--primary);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .field input, .field textarea {
+    width: 100%;
+    padding: 13px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.97rem;
+    color: var(--text);
+    background: #fff;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+    -webkit-appearance: none;
+  }
+  .field input:focus, .field textarea:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(224,48,32,0.12);
+  }
+  .field input.error { border-color: var(--danger); }
+  .field textarea { resize: vertical; min-height: 100px; line-height: 1.5; }
+
+  /* ── ROOM SECTIONS ── */
+  .room-card {
+    background: var(--card);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    margin-bottom: 16px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+  .room-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    cursor: pointer;
+    user-select: none;
+    background: var(--card);
+    transition: background 0.2s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .room-header:hover { background: var(--accent); }
+  .room-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--primary);
+  }
+  .room-icon {
+    width: 38px; height: 38px;
+    border-radius: 10px;
+    background: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+  }
+  .room-count {
+    background: var(--primary);
+    color: #fff;
+    border-radius: 50px;
+    padding: 2px 10px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    display: none;
+  }
+  .room-count.visible { display: inline-block; }
+  .room-chevron {
+    color: var(--muted);
+    transition: transform 0.25s;
+    flex-shrink: 0;
+  }
+  .room-card.open .room-chevron { transform: rotate(180deg); }
+
+  .room-body {
+    display: none;
+    padding: 4px 16px 16px;
+    border-top: 1px solid var(--border);
+  }
+  .room-card.open .room-body { display: block; }
+
+  /* ── ITEM ROW ── */
+  .item-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 11px 4px;
+    border-bottom: 1px solid #f5eded;
+  }
+  .item-row:last-child { border-bottom: none; }
+  .item-name {
+    font-size: 0.95rem;
+    color: var(--text);
+    flex: 1;
+    padding-right: 10px;
+    line-height: 1.3;
+  }
+  .item-sub {
+    font-size: 0.75rem;
+    color: var(--muted);
+    display: block;
+  }
+  .qty-control {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    background: var(--bg);
+    border: 1.5px solid var(--border);
+    border-radius: 50px;
+    overflow: hidden;
+  }
+  .qty-btn {
+    width: 38px; height: 38px;
+    border: none;
+    background: transparent;
+    color: var(--primary);
+    font-size: 1.3rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s;
+    -webkit-tap-highlight-color: transparent;
+    flex-shrink: 0;
+  }
+  .qty-btn:active { background: var(--accent); }
+  .qty-display {
+    min-width: 32px;
+    text-align: center;
+    font-size: 0.97rem;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .qty-display.nonzero { color: var(--primary); }
+
+  /* ── NOTES SECTION ── */
+  .section-label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--primary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 8px;
+  }
+
+  /* ── SUBMIT BUTTON ── */
+  .submit-wrap {
+    padding: 20px 0 10px;
+  }
+  .btn-submit {
+    width: 100%;
+    padding: 17px;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 1.05rem;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.02em;
+    transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+    box-shadow: 0 4px 20px rgba(224,48,32,0.28);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+  .btn-submit:hover { background: var(--primary-light); box-shadow: 0 6px 28px rgba(224,48,32,0.38); }
+  .btn-submit:active { transform: scale(0.98); }
+  .btn-submit:disabled { background: #9bafd0; cursor: not-allowed; box-shadow: none; }
+
+  .disclaimer {
+    text-align: center;
+    font-size: 0.78rem;
+    color: var(--muted);
+    margin-top: 12px;
+    line-height: 1.5;
+  }
+
+  /* ── ERROR MESSAGE ── */
+  .error-msg {
+    background: #fff2f2;
+    border: 1px solid #fca5a5;
+    border-radius: var(--radius-sm);
+    padding: 12px 16px;
+    color: var(--danger);
+    font-size: 0.9rem;
+    margin-bottom: 16px;
+    display: none;
+  }
+  .error-msg.show { display: block; }
+
+  /* ── SUCCESS SCREEN ── */
+  #success-screen {
+    display: none;
+    min-height: 100vh;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    text-align: center;
+    background: var(--bg);
+  }
+  #success-screen.show { display: flex; }
+  .success-inner { max-width: 440px; }
+  .success-icon {
+    width: 80px; height: 80px;
+    background: #ffeeed;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 24px;
+    font-size: 2rem;
+  }
+  .success-inner h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 2rem;
+    color: var(--primary);
+    margin-bottom: 12px;
+  }
+  .success-inner p { color: var(--muted); line-height: 1.6; font-size: 1rem; }
+  .success-detail {
+    background: var(--card);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    padding: 20px;
+    margin-top: 24px;
+    text-align: left;
+    font-size: 0.9rem;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+
+  /* ── PROGRESS DOTS ── */
+  .progress-steps {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-bottom: 28px;
+  }
+  .step-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--border);
+    transition: background 0.3s, transform 0.3s;
+  }
+  .step-dot.active { background: var(--primary); transform: scale(1.3); }
+
+  /* ── DIVIDER ── */
+  .section-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 28px 0 20px;
+  }
+  .section-divider span { color: var(--muted); font-size: 0.82rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; white-space: nowrap; }
+  .section-divider::before, .section-divider::after { content:''; flex:1; height:1px; background: var(--border); }
+
+  /* loading spinner */
+  .spinner { width: 20px; height: 20px; border: 2.5px solid rgba(255,255,255,0.4); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<!-- NETLIFY FORM DETECTION (hidden) -->
+<form name="inventory" netlify netlify-honeypot="bot-field" hidden>
+  <input type="text" name="name"/>
+  <input type="text" name="phone"/>
+  <input type="email" name="email"/>
+  <input type="text" name="address"/>
+  <input type="text" name="cbm"/>
+  <textarea name="inventory"></textarea>
+  <textarea name="notes"></textarea>
+  <input type="text" name="submitted"/>
+  <textarea name="full_summary"></textarea>
+</form>
+
+<!-- STICKY BAR -->
+<div class="sticky-bar">
+  <div class="sticky-logo">
+    <svg viewBox="0 0 200 38" xmlns="http://www.w3.org/2000/svg" aria-label="Movalist" style="height:30px;width:auto;display:block;">
+      <!-- Small house icon -->
+      <polygon points="10,16 18,7 26,16" fill="#ffffff"/>
+      <rect x="13.5" y="16" width="9" height="7" fill="#ffffff"/>
+      <rect x="16" y="19" width="4" height="4" fill="#e03020"/>
+      <!-- Full MOVALIST text -->
+      <text x="33" y="27" font-family="'DM Sans',Arial,sans-serif" font-weight="800" font-size="22" letter-spacing="0.5" fill="#ffffff">MOVALIST</text>
+    </svg>
+  </div>
+  <div class="volume-badge" id="volumeBadge">
+    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+    <span class="vol-num" id="volDisplay">0.0</span> m³
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="main-app">
+  <div class="container">
+
+    <!-- HERO -->
+    <div class="hero">
+      <div class="step-pill">Inventory Form</div>
+      <h1>Let's plan your move</h1>
+      <p>Tell us what you're moving and we'll take care of the rest. Takes about 3 minutes.</p>
+    </div>
+
+    <!-- STEP 1: CLIENT DETAILS -->
+    <div class="card">
+      <div class="card-title">
+        <svg width="20" height="20" fill="none" stroke="var(--primary)" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        Tell us about your move
+      </div>
+      <div class="field-grid">
+        <div class="field">
+          <label>Full Name *</label>
+          <input type="text" id="clientName" placeholder="Jane Smith" autocomplete="name">
+        </div>
+        <div class="field">
+          <label>Phone Number *</label>
+          <input type="tel" id="clientPhone" placeholder="04XX XXX XXX" autocomplete="tel">
+        </div>
+        <div class="field">
+          <label>Email Address *</label>
+          <input type="email" id="clientEmail" placeholder="jane@email.com" autocomplete="email">
+        </div>
+        <div class="field">
+          <label>Pickup Address *</label>
+          <input type="text" id="clientAddress" placeholder="123 Example St, Suburb" autocomplete="street-address">
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 2: INVENTORY -->
+    <div class="section-divider"><span>Your Inventory</span></div>
+    <p style="color:var(--muted);font-size:0.9rem;margin-bottom:18px;text-align:center;">Tap each room to add items. Only fill in what applies to you.</p>
+
+    <div id="rooms-container"></div>
+
+    <!-- STEP 3: NOTES -->
+    <div class="section-divider"><span>Additional Notes</span></div>
+    <div class="card">
+      <div class="section-label">Anything else we should know?</div>
+      <div class="field">
+        <textarea id="clientNotes" placeholder="e.g. 3rd floor walk-up, fragile items, awkward access, piano, pool table, specific instructions…" rows="4"></textarea>
+      </div>
+    </div>
+
+    <!-- SUBMIT -->
+    <div class="error-msg" id="errorMsg">⚠️ Please fill in all required fields before submitting.</div>
+    <div class="submit-wrap">
+      <button class="btn-submit" id="submitBtn" onclick="submitInventory()">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        Submit My Inventory
+      </button>
+      <p class="disclaimer">Your inventory will be sent securely to the Movalist team.</p>
+    </div>
+
+  </div>
+</div>
+
+<!-- SUCCESS SCREEN -->
+<div id="success-screen">
+  <div class="success-inner">
+    <div class="success-icon">✅</div>
+    <h2>You're all set!</h2>
+    <p>Your inventory has been sent to <strong>Movalist</strong>. Our team will be in touch shortly to confirm your move details.</p>
+    <div class="success-detail" id="successDetail"></div>
+  </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+// EMAILJS CONFIG — replace with your credentials
+// ─────────────────────────────────────────────
+const EMAILJS_PUBLIC_KEY   = 'i9NSweWe9wUbvj50-';
+const EMAILJS_SERVICE_ID   = 'service_9ww0my7';
+const EMAILJS_TEMPLATE_ID  = 'template_1vintlm';
+
+// ─────────────────────────────────────────────
+// ROOM + ITEM DATA
+// ─────────────────────────────────────────────
+const ROOMS = [
+  {
+    id: 'living', label: 'Living Room', icon: '🛋️',
+    items: [
+      { id:'sofa',        name:'Sofa / Couch',       cbm:1.5 },
+      { id:'armchair',    name:'Armchair',            cbm:0.5 },
+      { id:'tv',          name:'TV',  sub:'up to 65"',cbm:0.2 },
+      { id:'tvunit',      name:'TV Unit',             cbm:0.4 },
+      { id:'coffeetable', name:'Coffee Table',        cbm:0.3 },
+      { id:'bookcase',    name:'Bookcase',            cbm:0.5 },
+      { id:'lamp',        name:'Floor Lamp',          cbm:0.1 },
+      { id:'loungeboxes', name:'Boxes / Misc',        cbm:0.2 },
+    ]
+  },
+  {
+    id: 'dining', label: 'Dining Room', icon: '🪑',
+    items: [
+      { id:'diningtable', name:'Dining Table',        cbm:0.8 },
+      { id:'diningchair', name:'Dining Chair',        cbm:0.2 },
+      { id:'buffet',      name:'Buffet / Sideboard',  cbm:0.7 },
+      { id:'drinksfridge',name:'Bar Fridge',          cbm:0.3 },
+    ]
+  },
+  {
+    id: 'kitchen', label: 'Kitchen', icon: '🍳',
+    items: [
+      { id:'fridge',      name:'Fridge',  sub:'standard',cbm:0.9 },
+      { id:'fridge2door', name:'Fridge',  sub:'double door',cbm:1.2 },
+      { id:'washingm',    name:'Washing Machine',     cbm:0.7 },
+      { id:'dryer',       name:'Dryer',               cbm:0.6 },
+      { id:'microwave',   name:'Microwave',           cbm:0.1 },
+      { id:'dishwasher',  name:'Dishwasher',          cbm:0.6 },
+      { id:'kitchenbox',  name:'Kitchen Boxes',       cbm:0.2 },
+    ]
+  },
+  {
+    id: 'bedroom', label: 'Bedrooms', icon: '🛏️',
+    items: [
+      { id:'bedsingle',   name:'Bed Frame', sub:'Single',    cbm:0.5 },
+      { id:'beddouble',   name:'Bed Frame', sub:'Double',    cbm:0.7 },
+      { id:'bedqueen',    name:'Bed Frame', sub:'Queen',     cbm:0.9 },
+      { id:'bedking',     name:'Bed Frame', sub:'King',      cbm:1.1 },
+      { id:'mattsingle',  name:'Mattress',  sub:'Single',    cbm:0.3 },
+      { id:'mattdouble',  name:'Mattress',  sub:'Double/Queen',cbm:0.5},
+      { id:'mattking',    name:'Mattress',  sub:'King',      cbm:0.6 },
+      { id:'bedside',     name:'Bedside Table',        cbm:0.15},
+      { id:'tallboy',     name:'Tallboy / Chest of Drawers',cbm:0.5},
+      { id:'wardrobe',    name:'Wardrobe',             cbm:1.0 },
+      { id:'bedroomdesk', name:'Desk',                 cbm:0.5 },
+      { id:'bedroomchair',name:'Desk / Bedroom Chair', cbm:0.3 },
+    ]
+  },
+  {
+    id: 'garage', label: 'Garage / Storage', icon: '🔧',
+    items: [
+      { id:'garageboxes', name:'Boxes (moving boxes)',cbm:0.2 },
+      { id:'tools',       name:'Tools / Toolboxes',   cbm:0.4 },
+      { id:'shelving',    name:'Shelving Unit',        cbm:0.6 },
+      { id:'bike',        name:'Bicycle',              cbm:0.5 },
+      { id:'lawnmower',   name:'Lawn Mower',           cbm:0.5 },
+      { id:'ladder',      name:'Ladder',               cbm:0.3 },
+    ]
+  },
+  {
+    id: 'outdoor', label: 'Outdoor / Balcony', icon: '🌿',
+    items: [
+      { id:'outdoortable',name:'Outdoor Table',        cbm:0.7 },
+      { id:'outdoorchair',name:'Outdoor Chair',        cbm:0.3 },
+      { id:'bbq',         name:'BBQ',                  cbm:0.6 },
+      { id:'plants',      name:'Large Plants / Pots',  cbm:0.3 },
+      { id:'sunlounge',   name:'Sun Lounge',           cbm:0.4 },
+      { id:'parasol',     name:'Umbrella / Parasol',   cbm:0.2 },
+    ]
+  },
+  {
+    id: 'office', label: 'Home Office', icon: '💼',
+    items: [
+      { id:'officedesk',  name:'Desk',                 cbm:0.6 },
+      { id:'officechair', name:'Office Chair',         cbm:0.4 },
+      { id:'filingcab',   name:'Filing Cabinet',       cbm:0.4 },
+      { id:'officebook',  name:'Bookcase',             cbm:0.5 },
+      { id:'officebox',   name:'Boxes / Equipment',    cbm:0.2 },
+    ]
+  },
+  {
+    id: 'other', label: 'Other Items', icon: '📦',
+    items: [
+      { id:'artwork',     name:'Large Artwork / Canvas',cbm:0.2},
+      { id:'mirror',      name:'Large Mirror',          cbm:0.2},
+      { id:'rug',         name:'Large Rug',             cbm:0.3},
+      { id:'safebox',     name:'Safe / Heavy Box',      cbm:0.5},
+      { id:'piano',       name:'Piano',                 cbm:1.5},
+      { id:'pooltable',   name:'Pool / Billiards Table',cbm:2.0},
+      { id:'exerciseeq',  name:'Exercise Equipment',    cbm:0.8},
+      { id:'misc',        name:'Miscellaneous Boxes',   cbm:0.2},
+    ]
+  }
+];
+
+// State
+const quantities = {};
+ROOMS.forEach(r => r.items.forEach(it => { quantities[it.id] = 0; }));
+
+// ─────────────────────────────────────────────
+// BUILD UI
+// ─────────────────────────────────────────────
+function buildRooms() {
+  const container = document.getElementById('rooms-container');
+  ROOMS.forEach(room => {
+    const card = document.createElement('div');
+    card.className = 'room-card';
+    card.id = 'room-' + room.id;
+
+    const header = document.createElement('div');
+    header.className = 'room-header';
+    header.innerHTML = `
+      <div class="room-header-left">
+        <div class="room-icon">${room.icon}</div>
+        ${room.label}
+        <span class="room-count" id="count-${room.id}">0</span>
+      </div>
+      <svg class="room-chevron" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+    `;
+    header.addEventListener('click', () => toggleRoom(room.id));
+
+    const body = document.createElement('div');
+    body.className = 'room-body';
+    body.id = 'body-' + room.id;
+
+    room.items.forEach(item => {
+      const row = document.createElement('div');
+      row.className = 'item-row';
+      row.innerHTML = `
+        <div class="item-name">
+          ${item.name}
+          ${item.sub ? `<span class="item-sub">${item.sub}</span>` : ''}
+        </div>
+        <div class="qty-control">
+          <button class="qty-btn" onclick="changeQty('${item.id}', -1)" aria-label="Decrease">−</button>
+          <div class="qty-display" id="qty-${item.id}">0</div>
+          <button class="qty-btn" onclick="changeQty('${item.id}', 1)" aria-label="Increase">+</button>
+        </div>
+      `;
+      body.appendChild(row);
+    });
+
+    card.appendChild(header);
+    card.appendChild(body);
+    container.appendChild(card);
+  });
+}
+
+function toggleRoom(id) {
+  const card = document.getElementById('room-' + id);
+  card.classList.toggle('open');
+}
+
+// ─────────────────────────────────────────────
+// QUANTITY & VOLUME
+// ─────────────────────────────────────────────
+function changeQty(itemId, delta) {
+  quantities[itemId] = Math.max(0, (quantities[itemId] || 0) + delta);
+  document.getElementById('qty-' + itemId).textContent = quantities[itemId];
+  const el = document.getElementById('qty-' + itemId);
+  el.classList.toggle('nonzero', quantities[itemId] > 0);
+  updateVolume();
+  updateRoomCounts();
+}
+
+function getItemCbm(itemId) {
+  for (const room of ROOMS) {
+    const item = room.items.find(i => i.id === itemId);
+    if (item) return item.cbm;
+  }
+  return 0;
+}
+
+function updateVolume() {
+  let total = 0;
+  for (const [id, qty] of Object.entries(quantities)) {
+    total += qty * getItemCbm(id);
+  }
+  const display = document.getElementById('volDisplay');
+  display.textContent = total.toFixed(1);
+
+  const badge = document.getElementById('volumeBadge');
+  badge.classList.add('pulse');
+  setTimeout(() => badge.classList.remove('pulse'), 300);
+}
+
+function updateRoomCounts() {
+  ROOMS.forEach(room => {
+    let roomTotal = 0;
+    room.items.forEach(item => { roomTotal += quantities[item.id] || 0; });
+    const el = document.getElementById('count-' + room.id);
+    el.textContent = roomTotal;
+    el.classList.toggle('visible', roomTotal > 0);
+  });
+}
+
+// ─────────────────────────────────────────────
+// SUBMISSION
+// ─────────────────────────────────────────────
+function getTotalCbm() {
+  let total = 0;
+  for (const [id, qty] of Object.entries(quantities)) {
+    total += qty * getItemCbm(id);
+  }
+  return total.toFixed(1);
+}
+
+function buildInventoryText() {
+  let lines = [];
+  ROOMS.forEach(room => {
+    const roomItems = room.items.filter(i => quantities[i.id] > 0);
+    if (roomItems.length === 0) return;
+    lines.push(`\n${room.icon} ${room.label.toUpperCase()}`);
+    lines.push('─'.repeat(28));
+    roomItems.forEach(item => {
+      const qty = quantities[item.id];
+      const label = item.name + (item.sub ? ` (${item.sub})` : '');
+      lines.push(`  ${label.padEnd(30)} x ${qty}`);
+    });
+  });
+  return lines.join('\n');
+}
+
+function validateForm() {
+  const fields = ['clientName','clientPhone','clientEmail','clientAddress'];
+  let valid = true;
+  fields.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el.value.trim()) {
+      el.classList.add('error');
+      valid = false;
+    } else {
+      el.classList.remove('error');
+    }
+  });
+  return valid;
+}
+
+async function submitInventory() {
+  if (!validateForm()) {
+    const errEl = document.getElementById('errorMsg');
+    errEl.classList.add('show');
+    document.getElementById('clientName').scrollIntoView({ behavior:'smooth', block:'center' });
+    return;
+  }
+  document.getElementById('errorMsg').classList.remove('show');
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div> Sending…';
+
+  const name    = document.getElementById('clientName').value.trim();
+  const phone   = document.getElementById('clientPhone').value.trim();
+  const email   = document.getElementById('clientEmail').value.trim();
+  const address = document.getElementById('clientAddress').value.trim();
+  const notes   = document.getElementById('clientNotes').value.trim();
+  const cbm     = getTotalCbm();
+  const now     = new Date().toLocaleString('en-AU', { timeZone: 'Australia/Brisbane', dateStyle:'full', timeStyle:'short' });
+  const inventoryText = buildInventoryText();
+
+  const fullMessage = `MOVALIST INVENTORY SUBMISSION
+Submitted: ${now}
+
+CLIENT DETAILS
+Name: ${name} | Phone: ${phone} | Email: ${email} | Address: ${address}
+
+INVENTORY
+${inventoryText}
+
+TOTAL ESTIMATED VOLUME: ${cbm} m³
+
+NOTES: ${notes || '(none)'}`;
+
+  try {
+    const formData = new FormData();
+    formData.append('form-name', 'inventory');
+    formData.append('name', name);
+    formData.append('phone', phone);
+    formData.append('email', email);
+    formData.append('address', address);
+    formData.append('cbm', cbm + ' m³');
+    formData.append('inventory', inventoryText);
+    formData.append('notes', notes || '(none)');
+    formData.append('submitted', now);
+    formData.append('full_summary', fullMessage);
+
+    const response = await fetch('/', {
+      method: 'POST',
+      body: formData
+    });
+
+    if (response.ok) {
+      showSuccess(name, email, cbm, now);
+    } else {
+      throw new Error('Server returned ' + response.status);
+    }
+  } catch (err) {
+    console.error('Submit error:', err);
+    btn.disabled = false;
+    btn.innerHTML = `<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Submit My Inventory`;
+    const errEl = document.getElementById('errorMsg');
+    errEl.textContent = '⚠️ Submission failed: ' + err.message;
+    errEl.classList.add('show');
+  }
+}
+
+function showSuccess(name, email, cbm, time) {
+  document.getElementById('main-app').style.display = 'none';
+  const screen = document.getElementById('success-screen');
+  screen.classList.add('show');
+  document.getElementById('successDetail').innerHTML = `
+    <strong>📋 Summary</strong><br>
+    Name: ${name}<br>
+    Email: ${email}<br>
+    Estimated volume: <strong>${cbm} m³</strong><br>
+    Submitted: ${time}<br><br>
+    <span style="color:var(--primary);font-weight:600;">What happens next?</span><br>
+    Our team will review your inventory and contact you to confirm your booking details and provide a final quote.
+  `;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ─────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────
+emailjs.init(EMAILJS_PUBLIC_KEY);
+buildRooms();
+</script>
+</body>
+</html>

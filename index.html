@@ -817,12 +817,12 @@ ${notes || '(none)'}
 Sent via Movalist Inventory Calculator`;
 
   try {
-    await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+    await emailjs.send('service_9ww0my7', 'template_0v5ipme', {
       from_name: name,
       reply_to:  email,
       subject:   `Inventory Submission – ${name} – ${cbm} m³`,
       message:   emailBody,
-    }, EMAILJS_PUBLIC_KEY);
+}, 'i9NSweWe9wUbvj50-');
     showSuccess(name, email, cbm, now);
   } catch (err) {
     console.error('EmailJS error:', err);
